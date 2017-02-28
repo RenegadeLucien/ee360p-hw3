@@ -9,6 +9,7 @@ public class Client {
 		String hostAddress;
 	    int tcpPort;
 	    int udpPort;
+	    boolean isTCP = true;
 
 	    if (args.length != 3) {
 	      System.out.println("ERROR: Provide 3 arguments");
@@ -26,7 +27,6 @@ public class Client {
 	    while(sc.hasNextLine()) {
 	      String cmd = sc.nextLine();
 	      String[] tokens = cmd.split(" ");
-	      boolean isTCP = true;
 	      if (tokens[0].equals("setmode")) {
 	        // TODO: set the mode of communication for sending commands to the server 
 	        // and display the name of the protocol that will be used in future
@@ -136,8 +136,9 @@ public class Client {
 	    			  DataOutputStream out = new DataOutputStream(socket.getOutputStream());
 	    			  BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 	    			  out.writeBytes(toSend + '\n');
-	    			  messageReceived = in.readLine();
-	    			  System.out.println("Received from Server: " + messageReceived);
+	    			  String line;
+	    			    while ((line = in.readLine()) != null)
+	    			    	System.out.println(line);
 	    			  socket.close();
 	    		  }
 	    		  catch (UnknownHostException e) {System.err.println(e);} 
@@ -168,14 +169,14 @@ public class Client {
 	        // TODO: send appropriate command to the server and display the
 	        // appropriate responses form the server
 	    	  if(isTCP){
-	    		  String messageReceived;
 	    		  try{
 	    			  Socket socket = new Socket(hostAddress, tcpPort);
 	    			  DataOutputStream out = new DataOutputStream(socket.getOutputStream());
 	    			  BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 	    			  out.writeBytes(tokens[0] + '\n');
-	    			  messageReceived = in.readLine();
-	    			  System.out.println("Received from Server: " + messageReceived);
+	    			    String line;
+	    			    while ((line = in.readLine()) != null)
+	    			    	System.out.println(line);
 	    			  socket.close();
 	    		  }
 	    		  catch (UnknownHostException e) {System.err.println(e);} 
