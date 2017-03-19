@@ -43,32 +43,31 @@ public class Server {
     }
     
   public static void main (String[] args) {
-    int tcpPort;
-    int udpPort;
-    if (args.length != 3) {
-      System.out.println("ERROR: Provide 3 arguments");
-      System.out.println("\t(1) <tcpPort>: the port number for TCP connection");
-      System.out.println("\t(2) <udpPort>: the port number for UDP connection");
-      System.out.println("\t(3) <file>: the file of inventory");
+	  Scanner sc = new Scanner(System.in);
+	    int myID = sc.nextInt();
+	    int numServer = sc.nextInt();
+	    String inventoryPath = sc.next();
 
-      System.exit(-1);
-    }
-    tcpPort = Integer.parseInt(args[0]);
-    udpPort = Integer.parseInt(args[1]);
-    String fileName = args[2];
+	    System.out.println("[DEBUG] my id: " + myID);
+	    System.out.println("[DEBUG] numServer: " + numServer);
+	    System.out.println("[DEBUG] inventory path: " + inventoryPath);
+	    for (int i = 0; i < numServer; i++) {
+	      // TODO: parse inputs to get the ips and ports of servers
+	      String str = sc.next();
+	      System.out.println("address for server " + i + ": " + str);
     
 	// parse the inventory file
-    Server server = new Server(fileName);
+    Server server = new Server(inventoryPath);
     // TODO: handle request from clients
 
     TCPListener tl = new TCPListener(server, tcpPort);
-    UDPListener ul = new UDPListener(server, udpPort);
-    
-    ul.start();
     tl.start();
 
   }
-  
+  //**********************************************************************
+  //***pretty sure everything below this point shouldn't need to change***
+  //**********************************************************************
+	    
   public synchronized String purchase(String[] data)
   {
 	  String s = null;
@@ -196,44 +195,6 @@ class TCPListener extends Thread
 	}	
 }
 
-class UDPListener extends Thread
-{
-	Server server = null;
-	int udpPort = 0;
-	
-	public UDPListener(Server sv, int u)
-	{
-		server = sv;
-		udpPort = u;
-	}
-	@Override
-	public void run() {
-	    DatagramPacket datapacket;
-	    int len = 1024;
-	    DatagramSocket datasocket = null;
-		try {
-			datasocket = new DatagramSocket(udpPort);
-		} catch (SocketException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-    	while (true) {	    	
-			try {
-	    	byte [] buf = new byte [len];
-			datapacket = new DatagramPacket(buf,buf.length);
-			Arrays.fill(buf,(byte)0);
-			datasocket.receive(datapacket);
-			UDPThread u = new UDPThread(datasocket, datapacket, server);
-			u.run();
-			}
-			catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-    	}		
-	}
-}
-
 class TCPThread extends Thread
 {
 	DataInputStream input = null;
@@ -278,57 +239,6 @@ class TCPThread extends Thread
 			sock.close();
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-}
-
-class UDPThread extends Thread
-{
-	DatagramSocket sock = null;
-	DatagramPacket input = null;
-	Server server = null;
-	
-	public UDPThread(DatagramSocket ds, DatagramPacket dp, Server sv)
-	{
-		sock = ds;
-		input = dp;
-		server = sv;
-	}
-	
-	public void run()
-	{
-		String[] data = new String(input.getData()).split("\\s+");
-		String result = null;
-		while (result == null)
-		{
-			if (data[0].equals("purchase"))
-			{
-				result = server.purchase(data);
-			}
-			else if (data[0].equals("cancel"))
-			{
-				result = server.cancel(data);
-			}
-			else if (data[0].equals("search"))
-			{
-				result = server.search(data);
-			}
-			else if (data[0].trim().equals("list"))
-			{
-				result = server.list();
-			}
-		}
-		byte[] returnData;
-		returnData = result.getBytes();
-		DatagramPacket returnpacket = new DatagramPacket( 
-		    	returnData ,
-		    	returnData.length, 
-		    	input.getAddress() , 
-		    	input.getPort()) ;
-		try {
-			sock.send(returnpacket);
-		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
