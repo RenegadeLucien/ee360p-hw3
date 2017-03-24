@@ -11,6 +11,7 @@ public class Server {
     static ArrayList<Server> serverList = new ArrayList<Server>();
     static String[] hostAddresses;
     static int[] tcpPorts;
+    int sClock = 0;
 	
     class Order
     {
@@ -64,7 +65,7 @@ public class Server {
 		    tcpPorts[i] = Integer.parseInt(line[1]);
 	    
 		    Server server = new Server(inventoryPath);  // parse the inventory file
-		    // TODO: handle request from clients
+		    server.sClock++;// TODO: handle request from clients
 		    serverList.add(server);
 		    TCPListener tl = new TCPListener(server, tcpPorts[i]);
 			tl.start(); 
@@ -168,8 +169,10 @@ public class Server {
 	return s;
   }
   
-  public void serverUpdate(String[] data){
-		  String message = "UPDATE: " + data;
+  public void serverUpdate(String[] data, int clock){
+		  String message = "UPDATE: " + data + " " + clock;
+		  if(clock > this.sClock)
+			  this.sClock = clock + 1;
 		  int i = 0;
 		  for(Server s : serverList){
 			  try{
@@ -243,17 +246,18 @@ class TCPThread extends Thread
 			BufferedReader b = new BufferedReader(new InputStreamReader(input));
 			String[] data = b.readLine().split("\\s+");
 			String result = null;
+			int clock = 0;
 			while (result == null)
 			{
 				if (data[0].equals("purchase"))
 				{
 					result = server.purchase(data);
-					server.serverUpdate(data);
+					server.serverUpdate(data, clock);
 				}
 				else if (data[0].equals("cancel"))
 				{
 					result = server.cancel(data);
-					server.serverUpdate(data);
+					server.serverUpdate(data, clock);
 				}
 				else if (data[0].equals("search"))
 				{
@@ -280,6 +284,7 @@ class TCPThread extends Thread
 					}
 						
 				}
+				clock++;
 			}
 			output.writeBytes(result);
 			sock.close();
