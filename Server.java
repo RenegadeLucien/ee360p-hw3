@@ -8,6 +8,9 @@ public class Server {
     ArrayList<Integer> quantity = new ArrayList<Integer>();
     int orderNum = 1;
     ArrayList<Order> orders = new ArrayList<Order>();
+    static ArrayList<Server> serverList = new ArrayList<Server>();
+    static String[] hostAddresses;
+    static int[] tcpPorts;
 	
     class Order
     {
@@ -43,27 +46,31 @@ public class Server {
     }
     
   public static void main (String[] args) {
-	  Scanner sc = new Scanner(System.in);
+	  	Scanner sc = new Scanner(System.in);
 	    int myID = sc.nextInt();
 	    int numServer = sc.nextInt();
 	    String inventoryPath = sc.next();
-
+	    hostAddresses = new String[numServer];
+	    tcpPorts = new int[numServer];
 	    System.out.println("[DEBUG] my id: " + myID);
 	    System.out.println("[DEBUG] numServer: " + numServer);
 	    System.out.println("[DEBUG] inventory path: " + inventoryPath);
 	    for (int i = 0; i < numServer; i++) {
-	      // TODO: parse inputs to get the ips and ports of servers
-	      String str = sc.next();
-	      System.out.println("address for server " + i + ": " + str);
-    
-	// parse the inventory file
-    Server server = new Server(inventoryPath);
-    // TODO: handle request from clients
-
-    TCPListener tl = new TCPListener(server, tcpPort);
-    tl.start();
-
+	        // TODO: parse inputs to get the ips and ports of servers
+	    	String str = sc.next();
+	        System.out.println("address for server " + i + ": " + str);
+	        String[] line = sc.nextLine().split(":");
+		    hostAddresses[i] = line[0];
+		    tcpPorts[i] = Integer.parseInt(line[1]);
+	    
+		    Server server = new Server(inventoryPath);  // parse the inventory file
+		    // TODO: handle request from clients
+		    serverList.add(server);
+		    TCPListener tl = new TCPListener(server, tcpPorts[i]);
+			tl.start(); 
+	    }  
   }
+  
   //**********************************************************************
   //***pretty sure everything below this point shouldn't need to change***
   //**********************************************************************
@@ -146,6 +153,7 @@ public class Server {
   	{
   		s = "No order found for " + user;
   	}
+  	
   	return s;
   }
   
@@ -156,8 +164,27 @@ public class Server {
   	{
   		s+=(inventory.get(i) + " " + quantity.get(i) + '\n');
   	}
+	
 	return s;
   }
+  
+  public void serverUpdate(String[] data){
+		  String message = "UPDATE: " + data;
+		  int i = 0;
+		  for(Server s : serverList){
+			  try{
+				  ServerSocket listener = new ServerSocket(tcpPorts[i]);
+				  Socket sock = listener.accept();
+				  DataOutputStream output = new DataOutputStream(sock.getOutputStream());
+				  output.writeBytes(message);
+				  sock.close();
+				  listener.close();
+				  i++;
+			  }
+			  catch(IOException e){e.printStackTrace();}			  
+		  }
+  }
+  
 }
 
 class TCPListener extends Thread
@@ -221,10 +248,12 @@ class TCPThread extends Thread
 				if (data[0].equals("purchase"))
 				{
 					result = server.purchase(data);
+					server.serverUpdate(data);
 				}
 				else if (data[0].equals("cancel"))
 				{
 					result = server.cancel(data);
+					server.serverUpdate(data);
 				}
 				else if (data[0].equals("search"))
 				{
@@ -234,6 +263,23 @@ class TCPThread extends Thread
 				{
 					result = server.list();
 				}
+				else if (data[0].equals("UPDATE: "))
+				{
+					String[] newData = new String[data.length - 1];
+					for(int i = 1; i < data.length; i++)
+						newData[i-1] = data[1];
+					if(newData[0].equals("purchase"))
+					{
+						result = server.purchase(newData);
+						
+					}
+						
+					else if(newData[0].equals("cancel"))
+					{
+						result = server.cancel(newData);
+					}
+						
+				}
 			}
 			output.writeBytes(result);
 			sock.close();
@@ -242,4 +288,6 @@ class TCPThread extends Thread
 			e.printStackTrace();
 		}
 	}
+	
+	
 }
