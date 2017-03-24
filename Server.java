@@ -7,10 +7,11 @@ public class Server {
     ArrayList<String> inventory = new ArrayList<String>();
     ArrayList<Integer> quantity = new ArrayList<Integer>();
     int orderNum = 1;
+    int numServers;
     ArrayList<Order> orders = new ArrayList<Order>();
-    static ArrayList<Server> serverList = new ArrayList<Server>();
     static String[] hostAddresses;
     static int[] tcpPorts;
+    int id = 0;
     int sClock = 0;
 	
     class Order
@@ -59,17 +60,17 @@ public class Server {
 	    for (int i = 0; i < numServer; i++) {
 	        // TODO: parse inputs to get the ips and ports of servers
 	    	String str = sc.next();
+	        String[] line = str.split(":");
 	        System.out.println("address for server " + i + ": " + str);
-	        String[] line = sc.nextLine().split(":");
 		    hostAddresses[i] = line[0];
 		    tcpPorts[i] = Integer.parseInt(line[1]);
-	    
-		    Server server = new Server(inventoryPath);  // parse the inventory file
-		    server.sClock++;// TODO: handle request from clients
-		    serverList.add(server);
-		    TCPListener tl = new TCPListener(server, tcpPorts[i]);
-			tl.start(); 
 	    }  
+		    Server server = new Server(inventoryPath);  // parse the inventory file
+		    server.id = myID;
+		    server.numServers = numServer;
+		    server.sClock++;// TODO: handle request from clients
+		    TCPListener tl = new TCPListener(server, tcpPorts[myID-1]);
+			tl.start(); 
   }
   
   //**********************************************************************
@@ -170,24 +171,25 @@ public class Server {
   }
   
   public void serverUpdate(String[] data, int clock){
-		  String message = "UPDATE: " + data + " " + clock;
-		  if(clock > this.sClock)
+	  		  System.out.println("clocked");
 			  this.sClock = clock + 1;
-		  int i = 0;
-		  for(Server s : serverList){
-			  try{
-				  ServerSocket listener = new ServerSocket(tcpPorts[i]);
-				  Socket sock = listener.accept();
-				  DataOutputStream output = new DataOutputStream(sock.getOutputStream());
-				  output.writeBytes(message);
-				  sock.close();
-				  listener.close();
-				  i++;
+			  String message = "update";
+			  for (int i = 0; i < data.length; i++)
+				  message+=" " + data[i];
+			  System.out.println(message);
+			  for(int i = 0; i < this.numServers; i++){
+				  if (i+1 != this.id)
+					  try{
+						  System.out.println("updating");
+						  Socket socket = new Socket(hostAddresses[i], tcpPorts[i]);
+			    		  DataOutputStream out = new DataOutputStream(socket.getOutputStream());
+			    		  BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+			    		  out.writeBytes(message);
+			    		  socket.close();
+					  }
+					  catch(IOException e){e.printStackTrace();}	
+				  }
 			  }
-			  catch(IOException e){e.printStackTrace();}			  
-		  }
-  }
-  
 }
 
 class TCPListener extends Thread
@@ -246,18 +248,17 @@ class TCPThread extends Thread
 			BufferedReader b = new BufferedReader(new InputStreamReader(input));
 			String[] data = b.readLine().split("\\s+");
 			String result = null;
-			int clock = 0;
 			while (result == null)
 			{
 				if (data[0].equals("purchase"))
 				{
 					result = server.purchase(data);
-					server.serverUpdate(data, clock);
+					server.serverUpdate(data, server.sClock);
 				}
 				else if (data[0].equals("cancel"))
 				{
 					result = server.cancel(data);
-					server.serverUpdate(data, clock);
+					server.serverUpdate(data, server.sClock);
 				}
 				else if (data[0].equals("search"))
 				{
@@ -267,11 +268,11 @@ class TCPThread extends Thread
 				{
 					result = server.list();
 				}
-				else if (data[0].equals("UPDATE: "))
+				else if (data[0].equals("update"))
 				{
 					String[] newData = new String[data.length - 1];
 					for(int i = 1; i < data.length; i++)
-						newData[i-1] = data[1];
+						newData[i-1] = data[i];
 					if(newData[0].equals("purchase"))
 					{
 						result = server.purchase(newData);
@@ -282,9 +283,10 @@ class TCPThread extends Thread
 					{
 						result = server.cancel(newData);
 					}
+					System.out.println("updated");
 						
 				}
-				clock++;
+				server.sClock++;
 			}
 			output.writeBytes(result);
 			sock.close();
@@ -293,6 +295,4 @@ class TCPThread extends Thread
 			e.printStackTrace();
 		}
 	}
-	
-	
 }
